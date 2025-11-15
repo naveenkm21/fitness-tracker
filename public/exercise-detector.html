@@ -22,15 +22,131 @@
             align-items: center;
             gap: 20px;
         }
+        .video-wrapper {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-start;
+            margin: 20px auto;
+            max-width: 1200px;
+            flex-wrap: wrap;
+        }
         .video-container {
             position: relative;
             width: 640px;
             height: 480px;
-            margin: 20px auto;
             border: 3px solid #333;
-            border-radius: 10px;
+            border-radius: 15px;
             overflow: hidden;
             background-color: #000;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        .counter-panel {
+            flex: 1;
+            min-width: 300px;
+            max-width: 500px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            color: white;
+        }
+        .counter-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .counter-header h2 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .counter-value {
+            font-size: 72px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+            color: #fff;
+            line-height: 1;
+            transition: transform 0.3s ease, color 0.3s ease;
+        }
+        .counter-value.updated {
+            animation: pulse 0.5s ease;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+        .counter-label {
+            text-align: center;
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .exercise-status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .exercise-status-badge.detecting {
+            background: rgba(76, 175, 80, 0.4);
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+        .exercise-status-badge.not-detecting {
+            background: rgba(158, 158, 158, 0.3);
+        }
+        .form-feedback-card {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            text-align: center;
+        }
+        .form-feedback-card.good {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: rgba(76, 175, 80, 0.5);
+        }
+        .form-feedback-card.poor {
+            background: rgba(244, 67, 54, 0.3);
+            border-color: rgba(244, 67, 54, 0.5);
         }
         video, canvas {
             position: absolute;
@@ -64,7 +180,7 @@
         }
         .results {
             width: 640px;
-            margin: 0 auto;
+            margin: 20px auto;
             background-color: white;
             padding: 20px;
             border-radius: 10px;
@@ -239,6 +355,29 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .video-wrapper {
+                flex-direction: column;
+                align-items: center;
+            }
+            .video-container {
+                width: 100%;
+                max-width: 640px;
+                height: auto;
+                aspect-ratio: 4/3;
+            }
+            .counter-panel {
+                width: 100%;
+                max-width: 640px;
+            }
+            .counter-value {
+                font-size: 56px;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -294,10 +433,37 @@
             </div>
         </div>
         
-        <div class="video-container">
-            <video id="webcam" autoplay playsinline></video>
-            <canvas id="output"></canvas>
-            <div class="feedback-overlay" id="feedbackOverlay"></div>
+        <div class="video-wrapper">
+            <div class="video-container">
+                <video id="webcam" autoplay playsinline></video>
+                <canvas id="output"></canvas>
+                <div class="feedback-overlay" id="feedbackOverlay"></div>
+            </div>
+            
+            <div class="counter-panel">
+                <div class="counter-header">
+                    <h2>Exercise Counter</h2>
+                    <div class="exercise-status-badge not-detecting" id="exerciseStatus">Not detecting</div>
+                </div>
+                
+                <div class="counter-label">Repetitions</div>
+                <div class="counter-value" id="repCount">0</div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Exercise</div>
+                        <div class="stat-value" id="detectedExercise" style="font-size: 18px;">None</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Confidence</div>
+                        <div class="stat-value" id="confidenceValue" style="font-size: 18px;">0%</div>
+                    </div>
+                </div>
+                
+                <div class="form-feedback-card" id="formFeedbackCard">
+                    <div id="formFeedback" style="font-weight: 600; font-size: 16px;">Ready to start</div>
+                </div>
+            </div>
         </div>
         
         <div class="controls">
@@ -308,16 +474,6 @@
         </div>
         
         <div class="results">
-            <div class="exercise-status" id="exerciseStatus">Not detecting</div>
-            <div>
-                <p>Exercise detected:</p>
-                <p id="detectedExercise">None</p>
-            </div>
-            <div>
-                <p>Repetition count:</p>
-                <div class="rep-counter" id="repCount">0</div>
-            </div>
-            <div id="formFeedback"></div>
             <div id="confidenceDisplay"></div>
             <div class="debug-info" id="debugInfo"></div>
         </div>
@@ -414,9 +570,11 @@
             armSelector: document.getElementById('armSelector'),
             armSelect: document.getElementById('armSelect'),
             confidenceDisplay: document.getElementById('confidenceDisplay'),
+            confidenceValue: document.getElementById('confidenceValue'),
             debugInfo: document.getElementById('debugInfo'),
             feedbackOverlay: document.getElementById('feedbackOverlay'),
             formFeedback: document.getElementById('formFeedback'),
+            formFeedbackCard: document.getElementById('formFeedbackCard'),
             
             // XP and User elements
             usernameInput: document.getElementById('usernameInput'),
@@ -740,7 +898,11 @@
             elements.detectBtn.disabled = true;
             elements.stopBtn.disabled = false;
             elements.resetBtn.disabled = false;
-            elements.exerciseStatus.textContent = "Detecting...";
+            if (elements.exerciseStatus) {
+                elements.exerciseStatus.textContent = "Detecting...";
+                elements.exerciseStatus.classList.remove('not-detecting');
+                elements.exerciseStatus.classList.add('detecting');
+            }
             
             updateDebugInfo("Starting detection for: " + state.selectedExerciseType);
             
@@ -758,7 +920,11 @@
             
             elements.detectBtn.disabled = false;
             elements.stopBtn.disabled = true;
-            elements.exerciseStatus.textContent = "Not detecting";
+            if (elements.exerciseStatus) {
+                elements.exerciseStatus.textContent = "Not detecting";
+                elements.exerciseStatus.classList.remove('detecting');
+                elements.exerciseStatus.classList.add('not-detecting');
+            }
             
             // Clear canvas
             ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
@@ -777,7 +943,12 @@
             state.formQuality = { good: 0, poor: 0 };
             state.streakCount = 0;
             state.formFeedback = "";
-            elements.formFeedback.textContent = "";
+            if (elements.formFeedback) {
+                elements.formFeedback.textContent = "Ready to start";
+            }
+            if (elements.formFeedbackCard) {
+                elements.formFeedbackCard.classList.remove('good', 'poor');
+            }
             updateDebugInfo("Counter reset");
         }
 
@@ -881,7 +1052,12 @@
             
             // Display confidence
             const avgConfidence = keypoints.reduce((sum, kp) => sum + kp.score, 0) / keypoints.length;
-            elements.confidenceDisplay.innerHTML = `<p>Pose detection confidence: ${(avgConfidence * 100).toFixed(1)}%</p>`;
+            if (elements.confidenceValue) {
+                elements.confidenceValue.textContent = `${(avgConfidence * 100).toFixed(0)}%`;
+            }
+            if (elements.confidenceDisplay) {
+                elements.confidenceDisplay.innerHTML = `<p>Pose detection confidence: ${(avgConfidence * 100).toFixed(1)}%</p>`;
+            }
         }
 
         // Analyze pose to detect exercises
@@ -916,7 +1092,9 @@
             }
             
             // Update UI
-            elements.detectedExercise.textContent = state.currentExercise;
+            if (elements.detectedExercise) {
+                elements.detectedExercise.textContent = state.currentExercise;
+            }
             
             // Update form feedback
             updateFormFeedback();
@@ -1227,7 +1405,14 @@
         // Count a repetition
         function countRep(formQuality) {
             state.reps++;
-            elements.repCount.textContent = state.reps;
+            if (elements.repCount) {
+                elements.repCount.textContent = state.reps;
+                // Add pulse animation
+                elements.repCount.classList.add('updated');
+                setTimeout(() => {
+                    elements.repCount.classList.remove('updated');
+                }, 500);
+            }
             
             // Record form quality
             if (formQuality === "good") {
@@ -1401,7 +1586,24 @@
 
         // Update form feedback in UI
         function updateFormFeedback() {
-            elements.formFeedback.textContent = state.formFeedback;
+            if (elements.formFeedback) {
+                elements.formFeedback.textContent = state.formFeedback || "Ready to start";
+            }
+            
+            // Update form feedback card styling
+            if (elements.formFeedbackCard) {
+                // Remove existing classes
+                elements.formFeedbackCard.classList.remove('good', 'poor');
+                
+                // Add appropriate class based on form quality
+                if (state.formFeedback && state.formFeedback.toLowerCase().includes('good')) {
+                    elements.formFeedbackCard.classList.add('good');
+                } else if (state.formFeedback && (state.formFeedback.toLowerCase().includes('poor') || 
+                         state.formFeedback.toLowerCase().includes('avoid') || 
+                         state.formFeedback.toLowerCase().includes('keep'))) {
+                    elements.formFeedbackCard.classList.add('poor');
+                }
+            }
         }
 
         // Save user data to localStorage
