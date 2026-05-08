@@ -233,10 +233,26 @@ const SKELETON_PAIRS: [number, number][] = [
   [5, 11], [6, 12], [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
 ]
 
+export type Telemetry = {
+  status: "idle" | "loading" | "ready" | "running" | "error"
+  reps: number
+  angle: number | null
+  atPeak: boolean
+  feedback: string
+  fps: number
+  durationSec: number
+  exercise: ExerciseType
+  exerciseLabel: string
+  direction: Direction
+  restThreshold: number
+  peakThreshold: number
+}
+
 export interface PoseDetectorProps {
   exercise: ExerciseType
   onRepsChange?: (reps: number) => void
   onStop?: (data: { reps: number; durationSec: number }) => void
+  onTelemetry?: (t: Telemetry) => void
   className?: string
 }
 
@@ -244,6 +260,7 @@ export default function PoseDetector({
   exercise,
   onRepsChange,
   onStop,
+  onTelemetry,
   className,
 }: PoseDetectorProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -253,22 +270,69 @@ export default function PoseDetector({
   const atPeakRef = useRef<boolean>(false)
   const exerciseRef = useRef<ExerciseType>(exercise)
   const startedAtRef = useRef<number | null>(null)
+  const frameCountRef = useRef(0)
+  const lastFpsTickRef = useRef(0)
 
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "running" | "error">("idle")
   const [reps, setReps] = useState(0)
   const [currentAngle, setCurrentAngle] = useState<number | null>(null)
   const [feedback, setFeedback] = useState("")
   const [errorMsg, setErrorMsg] = useState("")
+  const [fps, setFps] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [atPeakState, setAtPeakState] = useState(false)
 
   useEffect(() => {
     exerciseRef.current = exercise
     setReps(0)
     atPeakRef.current = false
+    setAtPeakState(false)
   }, [exercise])
 
   useEffect(() => {
     onRepsChange?.(reps)
   }, [reps, onRepsChange])
+
+  // Tick session duration once per second
+  useEffect(() => {
+    if (status !== "running") return
+    const id = setInterval(() => {
+      if (startedAtRef.current) {
+        setDuration(Math.round((Date.now() - startedAtRef.current) / 1000))
+      }
+    }, 500)
+    return () => clearInterval(id)
+  }, [status])
+
+  // Emit telemetry whenever live state changes
+  useEffect(() => {
+    if (!onTelemetry) return
+    const cfg = EXERCISES[exercise]
+    onTelemetry({
+      status,
+      reps,
+      angle: currentAngle,
+      atPeak: atPeakState,
+      feedback,
+      fps,
+      durationSec: duration,
+      exercise,
+      exerciseLabel: cfg.label,
+      direction: cfg.direction,
+      restThreshold: cfg.restThreshold,
+      peakThreshold: cfg.peakThreshold,
+    })
+  }, [
+    status,
+    reps,
+    currentAngle,
+    feedback,
+    fps,
+    duration,
+    atPeakState,
+    exercise,
+    onTelemetry,
+  ])
 
   const start = async () => {
     try {
@@ -309,6 +373,10 @@ export default function PoseDetector({
       setStatus("running")
       startedAtRef.current = Date.now()
       atPeakRef.current = false
+      setAtPeakState(false)
+      setDuration(0)
+      lastFpsTickRef.current = performance.now()
+      frameCountRef.current = 0
       loop()
     } catch (e: any) {
       console.error(e)
@@ -357,6 +425,15 @@ export default function PoseDetector({
           updateRepState(poses[0].keypoints)
         }
       }
+
+      // FPS counter
+      frameCountRef.current += 1
+      const now = performance.now()
+      if (now - lastFpsTickRef.current >= 1000) {
+        setFps(frameCountRef.current)
+        frameCountRef.current = 0
+        lastFpsTickRef.current = now
+      }
     }
 
     rafRef.current = requestAnimationFrame(loop)
@@ -396,16 +473,20 @@ export default function PoseDetector({
       // peak = small angle, rest = large
       if (!atPeakRef.current && a < cfg.peakThreshold) {
         atPeakRef.current = true
+        setAtPeakState(true)
       } else if (atPeakRef.current && a > cfg.restThreshold) {
         atPeakRef.current = false
+        setAtPeakState(false)
         setReps((r) => r + 1)
       }
     } else {
       // extend: peak = large angle, rest = small
       if (!atPeakRef.current && a > cfg.peakThreshold) {
         atPeakRef.current = true
+        setAtPeakState(true)
       } else if (atPeakRef.current && a < cfg.restThreshold) {
         atPeakRef.current = false
+        setAtPeakState(false)
         setReps((r) => r + 1)
       }
     }

@@ -1,18 +1,17 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useState, useTransition } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { useCallback, useState, useTransition } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import DashboardHeader from "@/components/dashboard-header"
-import { Save, Sparkles } from "lucide-react"
+import { Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { recordWorkout } from "@/lib/actions"
 import { celebratePR, celebrateAchievement } from "@/lib/celebrate"
 import { ACHIEVEMENT_BY_CODE } from "@/lib/achievements"
-import type { ExerciseType } from "@/components/pose-detector"
+import LiveFeedbackPanel from "@/components/live-feedback-panel"
+import type { ExerciseType, Telemetry } from "@/components/pose-detector"
 
 const PoseDetector = dynamic(() => import("@/components/pose-detector"), {
   ssr: false,
@@ -117,8 +116,10 @@ export default function WorkoutPage() {
   const { toast } = useToast()
   const [exercise, setExercise] = useState<ExerciseType>("squat")
   const [filter, setFilter] = useState<ExMeta["category"] | "all">("all")
-  const [pending, startTransition] = useTransition()
-  const [manualReps, setManualReps] = useState(0)
+  const [, startTransition] = useTransition()
+  const [telemetry, setTelemetry] = useState<Telemetry | null>(null)
+
+  const handleTelemetry = useCallback((t: Telemetry) => setTelemetry(t), [])
 
   const celebrate = (res: Awaited<ReturnType<typeof recordWorkout>>, reps: number, label: string) => {
     if (res.isPR) {
@@ -158,22 +159,6 @@ export default function WorkoutPage() {
       try {
         const res = await recordWorkout({ exercise, reps, durationSec })
         celebrate(res, reps, current.name.toLowerCase())
-      } catch {
-        toast({ title: "Failed to save", variant: "destructive" })
-      }
-    })
-  }
-
-  const handleManualSave = () => {
-    if (manualReps <= 0) {
-      toast({ title: "Enter at least 1 rep", variant: "destructive" })
-      return
-    }
-    startTransition(async () => {
-      try {
-        const res = await recordWorkout({ exercise, reps: manualReps })
-        celebrate(res, manualReps, current.name.toLowerCase())
-        setManualReps(0)
       } catch {
         toast({ title: "Failed to save", variant: "destructive" })
       }
@@ -239,18 +224,22 @@ export default function WorkoutPage() {
             ))}
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-            <PoseDetector exercise={exercise} onStop={handleStop} />
+          <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+            <PoseDetector
+              exercise={exercise}
+              onStop={handleStop}
+              onTelemetry={handleTelemetry}
+            />
 
             <div className="space-y-6">
+              <LiveFeedbackPanel telemetry={telemetry} />
+
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2 text-sm font-semibold mb-3">
                     <span className="text-lg">{current.emoji}</span>
                     Form tips · {current.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+                  </div>
                   <ul className="text-sm space-y-2">
                     {current.tips.map((t) => (
                       <li key={t} className="flex items-start gap-2">
@@ -259,26 +248,6 @@ export default function WorkoutPage() {
                       </li>
                     ))}
                   </ul>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Manual entry</CardTitle>
-                  <CardDescription className="text-xs">No camera? Log it by hand.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Reps"
-                    value={manualReps || ""}
-                    onChange={(e) => setManualReps(parseInt(e.target.value) || 0)}
-                  />
-                  <Button onClick={handleManualSave} disabled={pending} variant="outline" className="w-full">
-                    <Save className="mr-2 h-4 w-4" />
-                    {pending ? "Saving…" : "Save manually"}
-                  </Button>
                 </CardContent>
               </Card>
             </div>
