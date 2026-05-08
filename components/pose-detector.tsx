@@ -175,8 +175,9 @@ export const EXERCISES: Record<ExerciseType, ExerciseConfig> = {
     label: "Sit-ups",
     emoji: "🧘",
     direction: "flex",
-    restThreshold: 150,
-    peakThreshold: 80,
+    // Knees bent setup, side-on camera: lying flat ≈ 80°, sat up ≈ 30°.
+    restThreshold: 80,
+    peakThreshold: 40,
     measure: (k) =>
       tripleAngle(
         pickSide(k[KP.leftShoulder], k[KP.rightShoulder]),
@@ -184,14 +185,15 @@ export const EXERCISES: Record<ExerciseType, ExerciseConfig> = {
         pickSide(k[KP.leftKnee], k[KP.rightKnee]),
       ),
     feedback: (a) =>
-      a < 80 ? "All the way up!" : a < 110 ? "Crunching" : a > 150 ? "Lying flat" : "Sit higher",
+      a < 40 ? "All the way up!" : a < 60 ? "Sitting up" : a > 75 ? "Lying flat" : "Lift higher",
   },
   crunch: {
     label: "Crunches",
     emoji: "💢",
     direction: "flex",
-    restThreshold: 160,
-    peakThreshold: 125,
+    // Smaller range than sit-ups — only the upper torso lifts.
+    restThreshold: 80,
+    peakThreshold: 60,
     measure: (k) =>
       tripleAngle(
         pickSide(k[KP.leftShoulder], k[KP.rightShoulder]),
@@ -199,7 +201,7 @@ export const EXERCISES: Record<ExerciseType, ExerciseConfig> = {
         pickSide(k[KP.leftKnee], k[KP.rightKnee]),
       ),
     feedback: (a) =>
-      a < 125 ? "Nice contraction" : a > 160 ? "Lying flat" : "Lift shoulders off",
+      a < 60 ? "Nice contraction" : a > 78 ? "Lying flat" : "Lift shoulders off",
   },
   gluteBridge: {
     label: "Glute Bridge",
@@ -220,8 +222,9 @@ export const EXERCISES: Record<ExerciseType, ExerciseConfig> = {
     label: "Tricep Extension",
     emoji: "🔥",
     direction: "extend",
-    restThreshold: 80,
-    peakThreshold: 160,
+    // Overhead extension: bent ~80-110°, extended ~150-170°. Looser thresholds.
+    restThreshold: 110,
+    peakThreshold: 150,
     measure: (k) =>
       tripleAngle(
         pickSide(k[KP.leftShoulder], k[KP.rightShoulder]),
@@ -229,7 +232,7 @@ export const EXERCISES: Record<ExerciseType, ExerciseConfig> = {
         pickSide(k[KP.leftWrist], k[KP.rightWrist]),
       ),
     feedback: (a) =>
-      a > 160 ? "Locked out!" : a > 130 ? "Extending" : a < 80 ? "Bent — start position" : "Straighten arm",
+      a > 150 ? "Locked out!" : a > 130 ? "Extending" : a < 110 ? "Bent — ready to press" : "Straighten arm",
   },
 }
 

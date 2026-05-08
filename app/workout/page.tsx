@@ -52,7 +52,12 @@ const EXERCISES: ExMeta[] = [
     name: "Glute Bridge",
     emoji: "🌉",
     category: "lower",
-    tips: ["Lie on your back", "Knees bent, feet flat", "Drive heels into floor", "Squeeze glutes at the top"],
+    tips: [
+      "📷 Place camera at floor level, side-on",
+      "Lie on your back, knees bent",
+      "Drive heels into floor",
+      "Squeeze glutes at the top",
+    ],
   },
   {
     id: "pushup",
@@ -87,21 +92,36 @@ const EXERCISES: ExMeta[] = [
     name: "Tricep Extension",
     emoji: "🔥",
     category: "upper",
-    tips: ["Hold weight overhead", "Elbows tight, point up", "Lower behind head", "Extend fully"],
+    tips: [
+      "Face the camera, arms overhead",
+      "Elbows tight, pointing up",
+      "Lower behind your head",
+      "Extend fully — don't lock harshly",
+    ],
   },
   {
     id: "situp",
     name: "Sit-ups",
     emoji: "🧘",
     category: "core",
-    tips: ["Knees bent", "Hands behind head or chest", "Sit all the way up", "Lower with control"],
+    tips: [
+      "📷 Camera at floor level, side-on",
+      "Knees bent, feet flat",
+      "Hands across chest or behind head",
+      "Sit all the way up, lower with control",
+    ],
   },
   {
     id: "crunch",
     name: "Crunches",
     emoji: "💢",
     category: "core",
-    tips: ["Lower back stays down", "Lift shoulders off floor", "Exhale at the top", "Don't pull on neck"],
+    tips: [
+      "📷 Camera at floor level, side-on",
+      "Lower back stays planted",
+      "Lift just your shoulder blades",
+      "Don't pull on your neck",
+    ],
   },
 ]
 
