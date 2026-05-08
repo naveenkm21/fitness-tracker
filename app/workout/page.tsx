@@ -1,198 +1,290 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/components/auth-provider"
+import dynamic from "next/dynamic"
+import { useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Progress } from "@/components/ui/progress"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
 import DashboardHeader from "@/components/dashboard-header"
-import { Dumbbell, Play } from "lucide-react"
+import { Save, Sparkles } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { recordWorkout } from "@/lib/actions"
+import { celebratePR, celebrateAchievement } from "@/lib/celebrate"
+import { ACHIEVEMENT_BY_CODE } from "@/lib/achievements"
+import type { ExerciseType } from "@/components/pose-detector"
+
+const PoseDetector = dynamic(() => import("@/components/pose-detector"), {
+  ssr: false,
+  loading: () => (
+    <Card>
+      <CardContent className="aspect-video grid place-items-center text-muted-foreground">
+        Loading detector…
+      </CardContent>
+    </Card>
+  ),
+})
+
+type ExMeta = {
+  id: ExerciseType
+  name: string
+  emoji: string
+  category: "lower" | "upper" | "core"
+  tips: string[]
+}
+
+const EXERCISES: ExMeta[] = [
+  {
+    id: "squat",
+    name: "Squats",
+    emoji: "🦵",
+    category: "lower",
+    tips: ["Back straight", "Knees over toes", "Weight in heels", "Go as low as comfortable"],
+  },
+  {
+    id: "lunge",
+    name: "Lunges",
+    emoji: "🏃",
+    category: "lower",
+    tips: ["Step long", "Front knee over ankle", "Drop the back knee", "Keep torso upright"],
+  },
+  {
+    id: "gluteBridge",
+    name: "Glute Bridge",
+    emoji: "🌉",
+    category: "lower",
+    tips: ["Lie on your back", "Knees bent, feet flat", "Drive heels into floor", "Squeeze glutes at the top"],
+  },
+  {
+    id: "pushup",
+    name: "Push-ups",
+    emoji: "💪",
+    category: "upper",
+    tips: ["Body in a straight line", "Hands wider than shoulders", "Lower to 90° elbow", "Core engaged"],
+  },
+  {
+    id: "bicep",
+    name: "Bicep Curls",
+    emoji: "💥",
+    category: "upper",
+    tips: ["Elbows tucked", "Controlled motion", "Lower slowly", "No swinging"],
+  },
+  {
+    id: "shoulderPress",
+    name: "Shoulder Press",
+    emoji: "🏋️",
+    category: "upper",
+    tips: ["Start with arms at shoulders", "Press straight overhead", "Lock out at the top", "Don't arch back"],
+  },
+  {
+    id: "lateralRaise",
+    name: "Lateral Raises",
+    emoji: "🦅",
+    category: "upper",
+    tips: ["Slight elbow bend", "Raise to shoulder height", "Lead with elbows", "Lower slowly"],
+  },
+  {
+    id: "tricepExtension",
+    name: "Tricep Extension",
+    emoji: "🔥",
+    category: "upper",
+    tips: ["Hold weight overhead", "Elbows tight, point up", "Lower behind head", "Extend fully"],
+  },
+  {
+    id: "situp",
+    name: "Sit-ups",
+    emoji: "🧘",
+    category: "core",
+    tips: ["Knees bent", "Hands behind head or chest", "Sit all the way up", "Lower with control"],
+  },
+  {
+    id: "crunch",
+    name: "Crunches",
+    emoji: "💢",
+    category: "core",
+    tips: ["Lower back stays down", "Lift shoulders off floor", "Exhale at the top", "Don't pull on neck"],
+  },
+]
+
+const CATEGORIES: { id: ExMeta["category"] | "all"; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "lower", label: "Lower body" },
+  { id: "upper", label: "Upper body" },
+  { id: "core", label: "Core" },
+]
 
 export default function WorkoutPage() {
-  const { user, loading, updateUserStats } = useAuth()
-  const router = useRouter()
   const { toast } = useToast()
-  const [exerciseData, setExerciseData] = useState({
-    reps: 0,
-    xp: 0,
-    formQuality: { good: 0, poor: 0 },
-    formFeedback: "",
-    exerciseType: "squat",
-  })
+  const [exercise, setExercise] = useState<ExerciseType>("squat")
+  const [filter, setFilter] = useState<ExMeta["category"] | "all">("all")
+  const [pending, startTransition] = useTransition()
+  const [manualReps, setManualReps] = useState(0)
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login")
+  const celebrate = (res: Awaited<ReturnType<typeof recordWorkout>>, reps: number, label: string) => {
+    if (res.isPR) {
+      celebratePR()
+      toast({
+        title: `🏆 New PR: ${reps} ${label}!`,
+        description: `Previous best: ${res.previousBest}. +25 XP bonus!`,
+      })
+    } else {
+      toast({
+        title: `Saved ${reps} ${label}`,
+        description: `+${res.xpEarned} XP · Level ${res.level} · ${res.xp} XP`,
+      })
     }
-  }, [user, loading, router])
-
-  useEffect(() => {
-    // Listen for messages from the exercise detector iframe
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === "exerciseData") {
-        const data = event.data.data
-        setExerciseData({
-          reps: data.reps,
-          xp: data.xp,
-          formQuality: data.formQuality,
-          formFeedback: data.formFeedback,
-          exerciseType: data.exerciseType,
-        })
-
-        // Update user stats in the auth context
-        if (user) {
-          updateUserStats({
-            xp: data.xp,
-            level: data.level,
-            exercisesToday: data.exercisesToday,
+    if (res.newAchievements.length > 0) {
+      // Stagger so PR toast lands first
+      setTimeout(() => {
+        celebrateAchievement()
+        for (const code of res.newAchievements) {
+          const ach = ACHIEVEMENT_BY_CODE[code]
+          if (!ach) continue
+          toast({
+            title: `${ach.emoji} Achievement unlocked`,
+            description: `${ach.name} — ${ach.description}`,
           })
         }
+      }, 600)
+    }
+  }
+
+  const handleStop = ({ reps, durationSec }: { reps: number; durationSec: number }) => {
+    if (reps <= 0) {
+      toast({ title: "No reps detected", description: "Workout discarded." })
+      return
+    }
+    startTransition(async () => {
+      try {
+        const res = await recordWorkout({ exercise, reps, durationSec })
+        celebrate(res, reps, current.name.toLowerCase())
+      } catch {
+        toast({ title: "Failed to save", variant: "destructive" })
       }
-    }
-
-    window.addEventListener("message", handleMessage)
-
-    return () => {
-      window.removeEventListener("message", handleMessage)
-    }
-  }, [user, updateUserStats])
-
-  const handleStartCamera = () => {
-    // Move the exercise-detector.html file to the public folder
-    window.location.href = "/exercise-detector.html"
+    })
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">Loading...</div>
-      </div>
-    )
+  const handleManualSave = () => {
+    if (manualReps <= 0) {
+      toast({ title: "Enter at least 1 rep", variant: "destructive" })
+      return
+    }
+    startTransition(async () => {
+      try {
+        const res = await recordWorkout({ exercise, reps: manualReps })
+        celebrate(res, manualReps, current.name.toLowerCase())
+        setManualReps(0)
+      } catch {
+        toast({ title: "Failed to save", variant: "destructive" })
+      }
+    })
   }
+
+  const current = EXERCISES.find((e) => e.id === exercise)!
+  const visible = filter === "all" ? EXERCISES : EXERCISES.filter((e) => e.category === filter)
 
   return (
     <div className="flex min-h-screen flex-col">
       <DashboardHeader />
-      <main className="flex-1 p-4 md:p-6">
-        <div className="container mx-auto max-w-5xl">
-          <div className="grid gap-6">
-            <div className="flex flex-col md:flex-row gap-6">
-              <Card className="flex-1">
-                <CardHeader>
-                  <CardTitle>Exercise Workout</CardTitle>
-                  <CardDescription>Start your workout with AI-powered exercise detection</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Exercise Type</label>
-                    <Select
-                      value={exerciseData.exerciseType}
-                      onValueChange={(value) => setExerciseData((prev) => ({ ...prev, exerciseType: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select exercise" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="squat">Squats</SelectItem>
-                        <SelectItem value="pushup">Push-ups</SelectItem>
-                        <SelectItem value="bicep">Bicep Curls</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+      <main className="flex-1 p-4 md:p-8">
+        <div className="container mx-auto max-w-6xl space-y-6">
+          <div className="flex items-end justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Start a workout</h1>
+              <p className="text-muted-foreground">Pick an exercise, fire up the camera, and let the AI count.</p>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+              5 XP per rep
+            </div>
+          </div>
 
-                  <div className="flex flex-col gap-4">
-                    <div className="flex justify-center">
-                      <Button onClick={handleStartCamera} className="w-full">
-                        <Play className="mr-2 h-4 w-4" />
-                        Start Camera & Exercise Detection
-                      </Button>
-                    </div>
-                  </div>
+          {/* Category filter */}
+          <div className="flex flex-wrap gap-2">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setFilter(c.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-sm font-medium border transition",
+                  filter === c.id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border hover:bg-secondary",
+                )}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Exercise grid */}
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+            {visible.map((e) => (
+              <button
+                key={e.id}
+                onClick={() => setExercise(e.id)}
+                className={cn(
+                  "rounded-2xl border p-4 text-left transition group",
+                  exercise === e.id
+                    ? "border-primary bg-primary/5 card-glow"
+                    : "hover:border-primary/40 hover:bg-secondary/30",
+                )}
+              >
+                <div className="text-2xl mb-1.5">{e.emoji}</div>
+                <div className="font-semibold text-sm">{e.name}</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
+                  {e.category}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+            <PoseDetector exercise={exercise} onStop={handleStop} />
+
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <span className="text-lg">{current.emoji}</span>
+                    Form tips · {current.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="text-sm space-y-2">
+                    {current.tips.map((t) => (
+                      <li key={t} className="flex items-start gap-2">
+                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                        {t}
+                      </li>
+                    ))}
+                  </ul>
                 </CardContent>
               </Card>
 
-              <Card className="flex-1">
+              <Card>
                 <CardHeader>
-                  <CardTitle>Your Stats</CardTitle>
-                  <CardDescription>Your current fitness progress</CardDescription>
+                  <CardTitle className="text-base">Manual entry</CardTitle>
+                  <CardDescription className="text-xs">No camera? Log it by hand.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Dumbbell className="h-5 w-5" />
-                      <span className="font-medium">Level</span>
-                    </div>
-                    <div className="text-2xl font-bold">{user?.level || 1}</div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Total XP</span>
-                      <span className="text-sm font-medium">{user?.xp || 0}</span>
-                    </div>
-                    <Progress value={(user?.xp || 0) % 100} className="h-2" />
-                  </div>
-
-                  <div className="rounded-lg bg-muted p-3">
-                    <div className="font-medium">How it works</div>
-                    <p className="text-sm text-muted-foreground">
-                      Our AI-powered system will detect your exercises, count reps, and provide real-time feedback on
-                      your form.
-                    </p>
-                  </div>
+                <CardContent className="space-y-3">
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="Reps"
+                    value={manualReps || ""}
+                    onChange={(e) => setManualReps(parseInt(e.target.value) || 0)}
+                  />
+                  <Button onClick={handleManualSave} disabled={pending} variant="outline" className="w-full">
+                    <Save className="mr-2 h-4 w-4" />
+                    {pending ? "Saving…" : "Save manually"}
+                  </Button>
                 </CardContent>
               </Card>
             </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Exercise Guide</CardTitle>
-                <CardDescription>Tips for getting the most out of your workout</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-6 md:grid-cols-3">
-                  <div className="rounded-lg border p-4">
-                    <h3 className="font-bold mb-2">Squats</h3>
-                    <ul className="text-sm space-y-1 list-disc pl-4">
-                      <li>Keep your back straight</li>
-                      <li>Knees should track over toes</li>
-                      <li>Go as low as comfortable</li>
-                      <li>Keep weight in your heels</li>
-                    </ul>
-                  </div>
-                  <div className="rounded-lg border p-4">
-                    <h3 className="font-bold mb-2">Push-ups</h3>
-                    <ul className="text-sm space-y-1 list-disc pl-4">
-                      <li>Keep your body in a straight line</li>
-                      <li>Hands slightly wider than shoulders</li>
-                      <li>Lower until elbows are at 90°</li>
-                      <li>Keep core engaged</li>
-                    </ul>
-                  </div>
-                  <div className="rounded-lg border p-4">
-                    <h3 className="font-bold mb-2">Bicep Curls</h3>
-                    <ul className="text-sm space-y-1 list-disc pl-4">
-                      <li>Keep elbows close to your body</li>
-                      <li>Curl up with controlled motion</li>
-                      <li>Lower slowly to starting position</li>
-                      <li>Avoid swinging your body</li>
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <div className="text-sm text-muted-foreground">
-                  Check out our tutorials section for more detailed exercise guides
-                </div>
-              </CardFooter>
-            </Card>
           </div>
         </div>
       </main>
     </div>
   )
 }
-

@@ -1,93 +1,57 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/components/auth-provider"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Dumbbell, Menu, User, Settings, LogOut } from "lucide-react"
+import { usePathname } from "next/navigation"
+import { UserButton } from "@clerk/nextjs"
+import { Dumbbell } from "lucide-react"
+import { cn } from "@/lib/utils"
+import CoachWidget from "@/components/coach-widget"
+
+const NAV = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/workout", label: "Workout" },
+  { href: "/coach", label: "Coach" },
+  { href: "/tutorials", label: "Tutorials" },
+  { href: "/leaderboard", label: "Leaderboard" },
+]
 
 export default function DashboardHeader() {
-  const { user, logout } = useAuth()
-  const router = useRouter()
-
-  const handleLogout = () => {
-    logout()
-    router.push("/")
-  }
-
+  const pathname = usePathname()
   return (
-    <header className="border-b">
+    <>
+    <header className="sticky top-0 z-40 border-b border-border/40 bg-background/70 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="flex items-center gap-2 font-bold text-xl">
-            <Dumbbell className="h-6 w-6" />
-            <span className="hidden md:inline">FitTrack AI</span>
+        <div className="flex items-center gap-8">
+          <Link href="/dashboard" className="flex items-center gap-2 font-bold">
+            <div className="grid place-items-center h-8 w-8 rounded-lg gradient-bg text-white">
+              <Dumbbell className="h-4 w-4" />
+            </div>
+            <span className="gradient-text hidden sm:inline">FitTrack AI</span>
           </Link>
-          <nav className="hidden md:flex gap-6">
-            <Link href="/dashboard" className="text-sm font-medium hover:underline underline-offset-4">
-              Dashboard
-            </Link>
-            <Link href="/workout" className="text-sm font-medium hover:underline underline-offset-4">
-              Workout
-            </Link>
-            <Link href="/tutorials" className="text-sm font-medium hover:underline underline-offset-4">
-              Tutorials
-            </Link>
-            <Link href="/leaderboard" className="text-sm font-medium hover:underline underline-offset-4">
-              Leaderboard
-            </Link>
+          <nav className="flex gap-1">
+            {NAV.map((n) => {
+              const active = pathname === n.href || pathname?.startsWith(n.href + "/")
+              return (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-sm font-medium transition",
+                    active
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50",
+                  )}
+                >
+                  {n.label}
+                </Link>
+              )
+            })}
           </nav>
         </div>
-        <div className="flex items-center gap-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <User className="h-5 w-5" />
-                <span className="sr-only">User menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>
-                <div className="flex flex-col">
-                  <span>{user?.username}</span>
-                  <span className="text-xs text-muted-foreground">{user?.email}</span>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/profile">
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="icon" className="md:hidden">
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle menu</span>
-          </Button>
-        </div>
+        <UserButton afterSignOutUrl="/" />
       </div>
     </header>
+    <CoachWidget />
+    </>
   )
 }
-

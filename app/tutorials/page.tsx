@@ -1,9 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useAuth } from "@/components/auth-provider"
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -75,31 +72,17 @@ const tutorials = [
 ]
 
 export default function TutorialsPage() {
-  const { user, loading } = useAuth()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login")
-    }
-  }, [user, loading, router])
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">Loading...</div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex min-h-screen flex-col">
       <DashboardHeader />
-      <main className="flex-1 p-4 md:p-6">
+      <main className="flex-1 p-4 md:p-8">
         <div className="container mx-auto max-w-6xl">
           <div className="grid gap-6">
-            <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-bold tracking-tight">Exercise Tutorials</h1>
+            <div className="space-y-1 mb-2">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                <span className="gradient-text">Tutorials</span>
+              </h1>
+              <p className="text-muted-foreground">Master proper form before chasing reps.</p>
             </div>
 
             <Tabs defaultValue="all">
@@ -145,7 +128,7 @@ function TutorialGrid({ tutorials }: { tutorials: any[] }) {
 
 function TutorialCard({ tutorial }: { tutorial: any }) {
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden hover:border-primary/40 transition group">
       <div className="relative aspect-video">
         <iframe
           width="100%"

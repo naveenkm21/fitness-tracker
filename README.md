@@ -12,12 +12,21 @@ A modern fitness tracking application built with Next.js 14, featuring AI-powere
 
 ## Tech Stack
 
-- **Framework**: Next.js 14
+- **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **UI Components**: Radix UI + shadcn/ui
-- **State Management**: React Context API
+- **Auth**: Clerk
+- **Database**: Neon (Postgres) + Drizzle ORM
 - **Form Handling**: React Hook Form + Zod
+
+## Setup
+
+1. Copy `.env.example` to `.env.local` and fill in:
+   - `DATABASE_URL` from [Neon](https://neon.tech)
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` from [Clerk](https://clerk.com)
+2. Push the schema to Neon: `npm run db:push`
+3. Start the dev server: `npm run dev`
 
 ## Getting Started
 
